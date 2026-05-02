@@ -8,45 +8,35 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolate,
+  runOnJS,
+} from 'react-native-reanimated';
 import api from '../../services/api';
 import MatchModal from '../../components/MatchModal';
 
 const { width, height } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.9;
 const CARD_HEIGHT = height * 0.68;
-
-// Ensure user is authenticated before making API calls
-const ensureAuth = async () => {
-  const existing = await SecureStore.getItemAsync('authToken');
-  if (existing) return;
-
-  try {
-    // Auto-login with a test account (replace with your credentials)
-    const res = await api.post('/auth/login', {
-      email: 'rizzler@test.com',
-      password: 'test123',
-    });
-    if (res.data?.token) {
-      await SecureStore.setItemAsync('authToken', res.data.token);
-    }
-  } catch (err) {
-    console.error('Auto-login failed:', err);
-  }
-};
+const SWIPE_THRESHOLD = width * 0.3;
 
 export default function DiscoverScreen() {
   const [users, setUsers] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [swiping, setSwiping] = useState(false);
   const [matchVisible, setMatchVisible] = useState(false);
   const [matchedName, setMatchedName] = useState('');
+
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      await ensureAuth();
       const res = await api.get('/users/discover');
       setUsers(res.data.data || []);
       setCurrentIndex(0);
@@ -64,9 +54,8 @@ export default function DiscoverScreen() {
   const currentUser = users[currentIndex];
 
   const handleSwipe = async (action) => {
-    if (swiping || !currentUser) return;
-
-    setSwiping(true);
+    if (!currentUser) return;
+    
     try {
       const res = await api.post('/swipe', {
         swipedUserId: currentUser._id,
@@ -81,16 +70,72 @@ export default function DiscoverScreen() {
       // Move to next user
       if (currentIndex < users.length - 1) {
         setCurrentIndex((prev) => prev + 1);
+        // Reset card position for next user
+        translateX.value = 0;
+        translateY.value = 0;
       } else {
         // All users swiped — refetch
         await fetchUsers();
       }
     } catch (err) {
       console.error('Swipe failed:', err);
-    } finally {
-      setSwiping(false);
+      // Spring back if API fails
+      translateX.value = withSpring(0);
+      translateY.value = withSpring(0);
     }
   };
+
+  const forceSwipe = (direction) => {
+    'worklet';
+    const destination = direction === 'right' ? width + 100 : -width - 100;
+    translateX.value = withSpring(destination, { velocity: 50 }, () => {
+      runOnJS(handleSwipe)(direction === 'right' ? 'like' : 'dislike');
+    });
+  };
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      translateX.value = event.translationX;
+      translateY.value = event.translationY;
+    })
+    .onEnd((event) => {
+      if (translateX.value > SWIPE_THRESHOLD) {
+        // Swipe Right
+        translateX.value = withSpring(width + 100, { velocity: event.velocityX }, () => {
+          runOnJS(handleSwipe)('like');
+        });
+      } else if (translateX.value < -SWIPE_THRESHOLD) {
+        // Swipe Left
+        translateX.value = withSpring(-width - 100, { velocity: event.velocityX }, () => {
+          runOnJS(handleSwipe)('dislike');
+        });
+      } else {
+        // Spring back to center
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+      }
+    });
+
+  const animatedCardStyle = useAnimatedStyle(() => {
+    const rotate = interpolate(translateX.value, [-width / 2, 0, width / 2], [-15, 0, 15], 'clamp');
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { rotate: `${rotate}deg` },
+      ],
+    };
+  });
+
+  const nopeStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(translateX.value, [0, -SWIPE_THRESHOLD / 2], [0, 1], 'clamp');
+    return { opacity };
+  });
+
+  const likeStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(translateX.value, [0, SWIPE_THRESHOLD / 2], [0, 1], 'clamp');
+    return { opacity };
+  });
 
   // ── Loading State ──────────────────────────────────────────
   if (loading) {
@@ -116,74 +161,55 @@ export default function DiscoverScreen() {
     );
   }
 
-  // ── Profile photo ──────────────────────────────────────────
-  const photoUri =
-    currentUser.photos && currentUser.photos.length > 0
-      ? currentUser.photos[0]
-      : null;
+  const photoUri = currentUser.photos && currentUser.photos.length > 0 ? currentUser.photos[0] : null;
 
-  // ── Main UI ────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
-      {/* Card */}
-      <View style={styles.card}>
-        {photoUri ? (
-          <Image source={{ uri: photoUri }} style={styles.photo} />
-        ) : (
-          <View style={[styles.photo, styles.placeholderPhoto]}>
-            <Text style={styles.placeholderEmoji}>🙂</Text>
-          </View>
-        )}
+    <GestureHandlerRootView style={styles.container}>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[styles.card, animatedCardStyle]}>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.photo} />
+          ) : (
+            <View style={[styles.photo, styles.placeholderPhoto]}>
+              <Text style={styles.placeholderEmoji}>🙂</Text>
+            </View>
+          )}
 
-        {/* Gradient overlay at bottom of image */}
-        <View style={styles.gradient} />
+          <Animated.View style={[styles.stamp, styles.nopeStamp, nopeStyle]}>
+            <Text style={[styles.stampText, styles.nopeStampText]}>NOPE</Text>
+          </Animated.View>
 
-        {/* Info overlay */}
-        <View style={styles.infoOverlay}>
-          <Text style={styles.name}>
-            {currentUser.name}
-            {currentUser.age ? `, ${currentUser.age}` : ''}
-          </Text>
-          {currentUser.bio ? (
-            <Text style={styles.bio} numberOfLines={3}>
-              {currentUser.bio}
+          <Animated.View style={[styles.stamp, styles.likeStamp, likeStyle]}>
+            <Text style={[styles.stampText, styles.likeStampText]}>LIKE</Text>
+          </Animated.View>
+
+          <View style={styles.gradient} />
+          <View style={styles.infoOverlay}>
+            <Text style={styles.name}>
+              {currentUser.name}
+              {currentUser.age ? `, ${currentUser.age}` : ''}
             </Text>
-          ) : null}
-        </View>
-      </View>
+            {currentUser.bio ? (
+              <Text style={styles.bio} numberOfLines={3}>{currentUser.bio}</Text>
+            ) : null}
+          </View>
+        </Animated.View>
+      </GestureDetector>
 
-      {/* Action buttons */}
       <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.dislikeBtn]}
-          onPress={() => handleSwipe('dislike')}
-          disabled={swiping}
-          activeOpacity={0.8}
-        >
+        <TouchableOpacity style={[styles.actionBtn, styles.dislikeBtn]} onPress={() => forceSwipe('left')}>
           <Text style={styles.actionIcon}>✕</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.likeBtn]}
-          onPress={() => handleSwipe('like')}
-          disabled={swiping}
-          activeOpacity={0.8}
-        >
+        <TouchableOpacity style={[styles.actionBtn, styles.likeBtn]} onPress={() => forceSwipe('right')}>
           <Text style={styles.actionIcon}>♥</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Match modal */}
-      <MatchModal
-        visible={matchVisible}
-        matchedName={matchedName}
-        onClose={() => setMatchVisible(false)}
-      />
-    </View>
+      <MatchModal visible={matchVisible} matchedName={matchedName} onClose={() => setMatchVisible(false)} />
+    </GestureHandlerRootView>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -193,8 +219,6 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 30,
   },
-
-  // ── Card ───────────────────────────────────────────────────
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
@@ -226,9 +250,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '40%',
-    backgroundColor: 'transparent',
-    // Simulated gradient via multiple shadow layers — RN has no LinearGradient
-    // by default, so we use a semi-transparent overlay instead.
+    backgroundColor: 'rgba(0,0,0,0.3)',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
@@ -240,7 +262,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 24,
     paddingTop: 60,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   name: {
     fontSize: 28,
@@ -253,8 +274,35 @@ const styles = StyleSheet.create({
     color: '#DDDDDD',
     lineHeight: 20,
   },
-
-  // ── Action Buttons ─────────────────────────────────────────
+  stamp: {
+    position: 'absolute',
+    top: 50,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 4,
+  },
+  nopeStamp: {
+    right: 40,
+    borderColor: '#FF4458',
+    transform: [{ rotate: '15deg' }],
+  },
+  likeStamp: {
+    left: 40,
+    borderColor: '#4CAF50',
+    transform: [{ rotate: '-15deg' }],
+  },
+  stampText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+  },
+  nopeStampText: {
+    color: '#FF4458',
+  },
+  likeStampText: {
+    color: '#4CAF50',
+  },
   actions: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -287,8 +335,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
   },
-
-  // ── Loading / Empty States ─────────────────────────────────
   centered: {
     flex: 1,
     backgroundColor: '#0F0F1A',

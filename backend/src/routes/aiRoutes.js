@@ -1,12 +1,12 @@
 const express = require('express');
-const { getMatches, deleteMatch } = require('../controllers/matchController');
+const { generateAiBio, generateAiIcebreaker } = require('../controllers/aiController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 router.use(protect);
 
-router.get('/', getMatches);
-router.delete('/:matchId', deleteMatch);
+router.post('/bio', generateAiBio);
+router.post('/icebreaker', generateAiIcebreaker);
 
 module.exports = router;

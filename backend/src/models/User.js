@@ -61,18 +61,6 @@ const userSchema = new mongoose.Schema(
         message: 'Cannot have more than 6 photos',
       },
     },
-    location: {
-      lat: {
-        type: Number,
-        min: -90,
-        max: 90,
-      },
-      lng: {
-        type: Number,
-        min: -180,
-        max: 180,
-      },
-    },
     intent: {
       type: String,
       enum: ['dating', 'friends', 'networking'],

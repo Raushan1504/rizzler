@@ -1,12 +1,13 @@
 const express = require('express');
-const { getMatches, deleteMatch } = require('../controllers/matchController');
+const { getMessages } = require('../controllers/messageController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+// Apply auth middleware to all routes
 router.use(protect);
 
-router.get('/', getMatches);
-router.delete('/:matchId', deleteMatch);
+// GET /api/messages/:matchId
+router.get('/:matchId', getMessages);
 
 module.exports = router;

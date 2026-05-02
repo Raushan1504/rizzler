@@ -4,11 +4,14 @@ A full-stack, cross-platform mobile dating application built with React Native, 
 
 ## 📸 Screenshots
 
-*(Add your screenshots below! Simply drag and drop your images into the GitHub editor, or link local files if you create a `screenshots` folder).*
 
-| Discover & Swipe | Real-time Chat | User Profile & AI Bio |
-| :---: | :---: | :---: |
-| <img src="https://via.placeholder.com/250x500.png?text=Add+Swipe+Screenshot" width="250"/> | <img src="https://via.placeholder.com/250x500.png?text=Add+Chat+Screenshot" width="250"/> | <img src="https://via.placeholder.com/250x500.png?text=Add+Profile+Screenshot" width="250"/> |
+
+| <img width="957" height="1489" alt="image" src="https://github.com/user-attachments/assets/49a322b3-3536-48f0-98cd-f5450b7fed76" />|
+| <img width="540" height="1145" alt="image" src="https://github.com/user-attachments/assets/2d511b03-2a34-4c1a-8c06-0383525d3c58" /> |
+| <img width="1079" height="2219" alt="image" src="https://github.com/user-attachments/assets/fc716ce4-e324-4dbe-b215-688896a61d6e" />| 
+| <img width="906" height="1755" alt="image" src="https://github.com/user-attachments/assets/a1ffbb43-5f01-4bf6-8646-8ee88301e3cd" />|
+|<img width="1080" height="2292" alt="image" src="https://github.com/user-attachments/assets/6ee69fa3-12de-404e-a678-7fa9be12dfdb" />|
+
 
 <br>
 

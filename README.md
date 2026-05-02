@@ -10,7 +10,7 @@ A full-stack, cross-platform mobile dating application built with React Native, 
 | <img width="540" height="1145" alt="image" src="https://github.com/user-attachments/assets/2d511b03-2a34-4c1a-8c06-0383525d3c58" /> |
 | <img width="1079" height="2219" alt="image" src="https://github.com/user-attachments/assets/fc716ce4-e324-4dbe-b215-688896a61d6e" />| 
 | <img width="906" height="1755" alt="image" src="https://github.com/user-attachments/assets/a1ffbb43-5f01-4bf6-8646-8ee88301e3cd" />|
-|<img width="1080" height="2292" alt="image" src="https://github.com/user-attachments/assets/6ee69fa3-12de-404e-a678-7fa9be12dfdb" />|
+| <img width="1080" height="2292" alt="image" src="https://github.com/user-attachments/assets/6ee69fa3-12de-404e-a678-7fa9be12dfdb" />|
 
 
 <br>

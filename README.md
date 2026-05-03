@@ -43,7 +43,7 @@ A full-stack, cross-platform mobile dating application built with React Native, 
 
 ### 1. Clone the repository
 ```bash
-git clone <your-github-repo-url>
+git clone https://github.com/Raushan1504/rizzler
 cd dating-app-project
 ```
 
